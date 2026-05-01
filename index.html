@@ -190,6 +190,12 @@
     overflow: hidden;
   }
 
+  .btn-check:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none !important;
+  }
+
   .btn-check::after {
     content: '';
     position: absolute; inset: 0;
@@ -197,9 +203,9 @@
     transform: translateX(-100%);
     transition: 0.4s;
   }
-  .btn-check:hover::after { transform: translateX(100%); }
-  .btn-check:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(201,168,76,0.4); }
-  .btn-check:active { transform: translateY(0); }
+  .btn-check:hover:not(:disabled)::after { transform: translateX(100%); }
+  .btn-check:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(201,168,76,0.4); }
+  .btn-check:active:not(:disabled) { transform: translateY(0); }
 
   .msg {
     margin-top: 14px;
@@ -231,7 +237,6 @@
     opacity: 0.5;
   }
 
-  /* شاشة النجاح */
   #successScreen, #alreadyScreen {
     display: none;
     text-align: center;
@@ -296,6 +301,20 @@
   .btn-play:hover::after { transform: translateX(100%); }
   .btn-play:hover { transform: translateY(-3px); box-shadow: 0 14px 40px rgba(201,168,76,0.55); }
   .btn-play:active { transform: translateY(0); }
+
+  .loading {
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    border: 2px solid #1a1200;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: middle;
+    margin-left: 8px;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
@@ -303,7 +322,7 @@
 <div class="container">
   <div class="card">
 
-    <!-- ① شاشة إدخال الكود -->
+    <!-- شاشة إدخال الكود -->
     <div id="loginScreen">
       <div class="lock-icon">🔐</div>
       <div class="title">منطقة مقيدة</div>
@@ -311,7 +330,7 @@
       <div class="divider"><span>✦</span></div>
 
       <input type="text" id="codeInput" placeholder="أدخل الكود هنا" maxlength="20" autocomplete="off" spellcheck="false" />
-      <button class="btn-check" onclick="checkCode()">🔓 تحقق من الكود</button>
+      <button class="btn-check" id="checkBtn" onclick="checkCode()">🔓 تحقق من الكود</button>
 
       <div class="msg error" id="errorMsg">❌ الكود غير صحيح، حاول مجدداً</div>
       <div class="msg used"  id="usedMsg">🚫 هذا الكود مستخدم بالفعل من شخص آخر</div>
@@ -319,19 +338,19 @@
       <div class="footer">كل كود صالح لشخص واحد فقط</div>
     </div>
 
-    <!-- ② شاشة النجاح (أول مرة) -->
+    <!-- شاشة النجاح (أول مرة) -->
     <div id="successScreen">
       <div class="big-icon">✅</div>
       <div class="screen-title">تم التحقق بنجاح!</div>
-      <div class="screen-sub">كودك محفوظ على هذا الجهاز<br>يمكنك الدخول في أي وقت</div>
+      <div class="screen-sub">كودك محفوظ — يمكنك الدخول دائماً</div>
       <button class="btn-play" onclick="goToSite()">🎮 اضغط للعب</button>
     </div>
 
-    <!-- ③ شاشة العودة (نفس الشخص يرجع) -->
+    <!-- شاشة العودة (نفس الشخص) -->
     <div id="alreadyScreen">
       <div class="big-icon">👋</div>
       <div class="screen-title">أهلاً بعودتك!</div>
-      <div class="screen-sub">كودك مسجّل على هذا الجهاز<br>تفضل بالدخول مباشرة</div>
+      <div class="screen-sub">كودك مسجّل<br>تفضل بالدخول مباشرة</div>
       <button class="btn-play" onclick="goToSite()">🎮 اضغط للعب</button>
     </div>
 
@@ -339,29 +358,31 @@
 </div>
 
 <script>
-  const CODES = [
-    "VIPER9X",  "GHOST4K",  "TITAN7Z",  "RAVEN2M",  "STORM6Q",
-    "BLADE3W",  "NEXUS8Y",  "COBRA5J",  "DELTA1F",  "PHOENIX0",
-    "ZEPHYR4",  "FALCON7",  "OBSIDIAN", "CIPHER3X", "AURORA2K",
-    "MIRAGE9",  "VENOM5Q",  "ECLIPSE1", "SHADOW8W", "STEALTH6"
+  const SUPABASE_URL = "https://qwnfnraniogioixjwigo.supabase.co";
+  const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF3bmZucmFuaW9naW9peGp3aWdvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2NTAyMDYsImV4cCI6MjA5MzIyNjIwNn0.e6qgdMj05i0z0IG_Lg8JzDx2-OdV698kiWZrSiK0LWs";
+  const TARGET = "https://quenq.com/apps/vice-city/";
+
+  const VALID_CODES = [
+    "VIPER9X","GHOST4K","TITAN7Z","RAVEN2M","STORM6Q",
+    "BLADE3W","NEXUS8Y","COBRA5J","DELTA1F","PHOENIX0",
+    "ZEPHYR4","FALCON7","OBSIDIAN","CIPHER3X","AURORA2K",
+    "MIRAGE9","VENOM5Q","ECLIPSE1","SHADOW8W","STEALTH6"
   ];
 
-  const TARGET  = "https://quenq.com/apps/vice-city/";
-  const USED_K  = "vc_usedMap";   // { "CODE": "deviceId" }
-  const MY_K    = "vc_myCode";    // الكود المسجّل على هذا الجهاز
-  const DEV_K   = "vc_deviceId";  // معرّف الجهاز
+  const MY_KEY = "vc_myCode_v2";
 
   function getDeviceId() {
-    let id = localStorage.getItem(DEV_K);
+    let id = localStorage.getItem("vc_did");
     if (!id) {
       id = "D" + Math.random().toString(36).slice(2,10) + Date.now().toString(36);
-      localStorage.setItem(DEV_K, id);
+      localStorage.setItem("vc_did", id);
     }
     return id;
   }
 
-  function getMap()      { try { return JSON.parse(localStorage.getItem(USED_K)||"{}"); } catch { return {}; } }
-  function saveMap(m)    { localStorage.setItem(USED_K, JSON.stringify(m)); }
+  function goToSite() {
+    window.location.href = TARGET;
+  }
 
   function show(id) {
     ["loginScreen","successScreen","alreadyScreen"].forEach(s =>
@@ -369,19 +390,28 @@
     );
   }
 
-  function goToSite() {
-    window.location.href = TARGET;
+  function shake(el) {
+    el.classList.add("shake");
+    setTimeout(() => el.classList.remove("shake"), 400);
   }
 
-  // عند تحميل الصفحة
+  function setLoading(on) {
+    const btn = document.getElementById("checkBtn");
+    btn.disabled = on;
+    btn.innerHTML = on
+      ? 'جاري التحقق <span class="loading"></span>'
+      : '🔓 تحقق من الكود';
+  }
+
+  // عند تحميل الصفحة — هل عنده كود محفوظ؟
   window.onload = function() {
-    const myCode = localStorage.getItem(MY_K);
+    const myCode = localStorage.getItem(MY_KEY);
     if (myCode) {
-      show("alreadyScreen"); // نفس الشخص يرجع → اضغط للعب مباشرة
+      show("alreadyScreen");
     }
   };
 
-  function checkCode() {
+  async function checkCode() {
     const input = document.getElementById("codeInput");
     const code  = input.value.trim().toUpperCase();
     document.getElementById("errorMsg").style.display = "none";
@@ -391,28 +421,61 @@
     if (!code) { shake(input); return; }
 
     // كود غلط
-    if (!CODES.includes(code)) { shake(input); document.getElementById("errorMsg").style.display = "block"; return; }
-
-    const map  = getMap();
-    const myId = getDeviceId();
-
-    // مسجّل على جهاز آخر
-    if (map[code] && map[code] !== myId) {
+    if (!VALID_CODES.includes(code)) {
       shake(input);
-      document.getElementById("usedMsg").style.display = "block";
+      document.getElementById("errorMsg").style.display = "block";
       return;
     }
 
-    // سجّل الكود على هذا الجهاز
-    map[code] = myId;
-    saveMap(map);
-    localStorage.setItem(MY_K, code);
-    show("successScreen");
-  }
+    setLoading(true);
 
-  function shake(el) {
-    el.classList.add("shake");
-    setTimeout(() => el.classList.remove("shake"), 400);
+    try {
+      const deviceId = getDeviceId();
+
+      // اتحقق من الكود في Supabase
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/codes?code=eq.${code}`, {
+        headers: {
+          "apikey": SUPABASE_KEY,
+          "Authorization": `Bearer ${SUPABASE_KEY}`
+        }
+      });
+
+      const data = await res.json();
+
+      if (data.length === 0) {
+        // الكود لم يُستخدم بعد — سجّله
+        await fetch(`${SUPABASE_URL}/rest/v1/codes`, {
+          method: "POST",
+          headers: {
+            "apikey": SUPABASE_KEY,
+            "Authorization": `Bearer ${SUPABASE_KEY}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ code: code, device_id: deviceId })
+        });
+
+        localStorage.setItem(MY_KEY, code);
+        setLoading(false);
+        show("successScreen");
+
+      } else if (data[0].device_id === deviceId) {
+        // نفس الجهاز — ادخل
+        localStorage.setItem(MY_KEY, code);
+        setLoading(false);
+        show("alreadyScreen");
+
+      } else {
+        // جهاز تاني استخدمه
+        setLoading(false);
+        shake(input);
+        document.getElementById("usedMsg").style.display = "block";
+      }
+
+    } catch (e) {
+      setLoading(false);
+      document.getElementById("errorMsg").style.display = "block";
+      document.getElementById("errorMsg").textContent = "⚠️ خطأ في الاتصال، حاول مجدداً";
+    }
   }
 
   document.getElementById("codeInput").addEventListener("keydown", e => {
